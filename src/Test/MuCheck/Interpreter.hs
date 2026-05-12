@@ -119,6 +119,7 @@ evalMethod :: (I.MonadInterpreter m, Typeable t) =>
   -> m t                                  -- ^ Returns the monadic computation to be run by I.runInterpreter
 evalMethod fileName evalStr = do
   I.loadModules [fileName]
+  I.setImports ["Test.QuickCheck"]
   ms <- I.getLoadedModules
   I.setTopLevelModules ms
   I.interpret evalStr (I.as :: (Typeable a => IO a)) >>= liftIO
