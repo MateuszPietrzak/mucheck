@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 -- | MuCheck base module
-module Test.MuCheck (mucheck) where
+module Test.MuCheck where
 
 import Test.MuCheck.Mutation
 import Test.MuCheck.Config
@@ -8,6 +8,12 @@ import Test.MuCheck.Utils.Common
 import Test.MuCheck.Interpreter (evaluateMutants, MutantSummary(..))
 import Test.MuCheck.TestAdapter
 import Test.MuCheck.AnalysisSummary
+import Control.Monad
+
+mucheck' :: (Show b, Summarizable b, TRun a b) =>
+     a                                                     -- ^ The module we are mutating
+  -> IO ()
+mucheck' moduleFile = genMutants' (getName moduleFile)
 
 -- | Perform mutation analysis using any of the test frameworks that support
 -- Summarizable (essentially, after running it on haskell, we should be able to
@@ -27,7 +33,11 @@ mucheck moduleFile tix = do
   (len, mutants) <- genMutants (getName moduleFile) tix
   -- Should we do random sample on covering alone or on the full?
   smutants <- sampler defaultConfig mutants
+  -- putStrLn "Mutants:"
+  -- forM_ smutants (putStrLn . _mutant)
   tests <- getAllTests (getName moduleFile)
+  -- putStrLn "Tests:"
+  -- forM_ tests putStrLn
   (fsum', msum) <- evaluateMutants moduleFile smutants (map (genTest moduleFile) tests)
   -- set the original size of mutants. (We report the results based on original
   -- number of mutants, not just the covered ones.)

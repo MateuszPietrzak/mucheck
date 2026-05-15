@@ -75,6 +75,7 @@ executable sample-test
   main-is:          Examples/Main.hs
   other-modules:    Examples.AssertCheckTest
                     Examples.QuickCheckTest
+                    Examples.QuickCheckTestImpl
   build-depends:    base >=4 && <5,
                     MuCheck,
                     QuickCheck

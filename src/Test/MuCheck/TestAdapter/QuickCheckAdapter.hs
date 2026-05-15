@@ -4,8 +4,6 @@ module Test.MuCheck.TestAdapter.QuickCheckAdapter where
 import Test.MuCheck.TestAdapter
 import qualified Test.QuickCheck as QC
 
-import Data.Typeable
-
 type QuickCheckSummary = QC.Result
 
 instance Summarizable QuickCheckSummary where

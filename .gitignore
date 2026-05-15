@@ -1,5 +1,5 @@
 test.log
-Examples/*
+#Examples/*
 dist/*
 dist-newstyle/*
 .hpc/*

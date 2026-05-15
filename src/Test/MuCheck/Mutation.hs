@@ -3,7 +3,7 @@
 module Test.MuCheck.Mutation where
 
 import Language.Haskell.Exts(Literal(Int, Char, Frac, String, PrimInt, PrimChar, PrimFloat, PrimDouble, PrimWord, PrimString),
-        Exp(App, Var, If, Lit), QName(UnQual),
+        Exp(App, Var, If, Lit, Tuple), QName(UnQual),
         Match(Match), Pat(PVar),
         Stmt(Qualifier), Module(Module),
         Name(Ident), Decl(FunBind, PatBind, AnnPragma),
@@ -19,6 +19,8 @@ import Test.MuCheck.Utils.Syb
 import Test.MuCheck.Utils.Common
 import Test.MuCheck.Config
 import Test.MuCheck.TestAdapter
+import Debug.Trace
+import Data.Maybe (listToMaybe)
 
 -- | The `genMutants` function is a wrapper to genMutantsWith with standard
 -- configuraton
@@ -27,6 +29,35 @@ genMutants ::
   -> FilePath           -- ^ Coverage information for the module
   -> IO (Int,[Mutant]) -- ^ Returns the covering mutants produced, and original length.
 genMutants = genMutantsWith defaultConfig
+
+
+genMutants' ::FilePath -> IO ()
+genMutants' filename = do
+  f <- readFile filename
+
+  let
+    modul = getModuleName (getASTFromStr f)
+    ast  = getASTFromStr f
+    testPairs = getTestPairs ast
+
+  print modul
+  print testPairs
+
+  return ()
+
+-- | Get name of all tests, together with the name of function it tests
+getTestPairs :: Module_ -> [(String, String)]
+getTestPairs m = [(conv name, snd' expr) | Ann _l name expr <- listify isAnn m]
+  where
+    isAnn :: Annotation_ -> Bool
+    isAnn (Ann _l (Symbol _lsy _name) (Lit _ll (String _ls e _))) = (listToMaybe . words $ e) == Just "Test"
+    isAnn (Ann _l (Ident _lsy _name) (Lit _ll (String _ls e _))) = (listToMaybe . words $ e) == Just "Test"
+    isAnn _ = False
+    conv (Symbol _l n) = n
+    conv (Ident _l n) = n
+    snd' (Lit _ll (String _ls sn _)) = head . tail . words $ sn
+    snd' _ = undefined
+
 
 -- | The `genMutantsWith` function takes configuration function to mutate,
 -- function to mutate, filename the function is defined in, and produces
