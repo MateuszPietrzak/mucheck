@@ -6,7 +6,7 @@ import Language.Haskell.Exts(Literal(Int, Char, Frac, String, PrimInt, PrimChar,
         Exp(App, Var, If, Lit, Tuple), QName(UnQual),
         Match(Match), Pat(PVar),
         Stmt(Qualifier), Module(Module),
-        Name(Ident), Decl(FunBind, PatBind, AnnPragma),
+        Name(Ident), Decl(FunBind, PatBind, AnnPragma, TypeSig),
         GuardedRhs(GuardedRhs), Annotation(Ann), Name(Symbol, Ident),
         prettyPrint, fromParseResult, parseModule, SrcSpanInfo(..), SrcSpan(..),
         ModuleHead(..), ModuleName(..))
@@ -22,6 +22,7 @@ import Test.MuCheck.Config
 import Test.MuCheck.TestAdapter
 import Debug.Trace
 import Data.Maybe (listToMaybe)
+import Control.Monad (forM_)
 
 -- | The `genMutants` function is a wrapper to genMutantsWith with standard
 -- configuraton
@@ -43,14 +44,25 @@ genMutants' filename = do
     allDeclNames = getAllDeclNames ast
     moduleDep = genModuleDependencyList ast
     groups = groupTestsByFunctions testPairs
+    proven = getProvenFunctions ast
+    mutants = genMutantsForAllGroups defaultConfig f moduleDep groups proven
 
   print modul
   print testPairs
   print allDeclNames
   print moduleDep
   print groups
+  print proven
 
-  return ()
+  forM_ (Map.toList mutants) (\(k, v) -> do
+    putStrLn "========="
+    putStrLn k
+    forM_ v (\m -> do
+      putStrLn . _mutant $ m
+      putStrLn "---"
+      )
+    )
+
 
 -- | Convert the (test, tested function) pairs into groups based
 -- on the tested function.
@@ -106,6 +118,16 @@ getTestPairs m = [(conv name, snd' expr) | Ann _l name expr <- listify isAnn m]
     snd' (Lit _ll (String _ls sn _)) = head . tail . words $ sn
     snd' _ = undefined
 
+-- | Get names of all functions marked as "Proven".
+getProvenFunctions :: Module_ -> [String]
+getProvenFunctions m = [conv name | Ann _l name _expr <- listify isAnn m]
+  where
+    isAnn :: Annotation_ -> Bool
+    isAnn (Ann _l (Symbol _lsy _name) (Lit _ll (String _ls e _))) = e == "Proven"
+    isAnn (Ann _l (Ident _lsy _name) (Lit _ll (String _ls e _))) = e == "Proven"
+    isAnn _ = False
+    conv (Symbol _l n) = n
+    conv (Ident _l n) = n
 
 -- | The `genMutantsWith` function takes configuration function to mutate,
 -- function to mutate, filename the function is defined in, and produces
@@ -153,6 +175,43 @@ getAllFunctionDecls _ = []
 getModuleName :: Module t -> String
 getModuleName (Module _ (Just (ModuleHead _ (ModuleName _ name) _ _ )) _ _ _) = name
 getModuleName _ = ""
+
+genMutantsForAllGroups ::
+     Config
+  -> String                   -- ^ The module we are mutating
+  -> Map.Map String [String]  -- ^ Dependencies map
+  -> Map.Map String [String]  -- ^ Groups map
+  -> [String]                 -- ^ Proven functions
+  -> Map.Map String [Mutant]
+genMutantsForAllGroups config src deps groups proven = Map.mapWithKey mapGroup groups
+  where
+    mapGroup k _v = genMutantsForGroup config src (deps Map.! k) proven
+
+genMutantsForGroup::
+     Config                   -- ^ Configuration
+  -> String                   -- ^ The module we are mutating
+  -> [String]                 -- ^ Functions in the mutation group
+  -> [String]                 -- ^ Proven functions
+  -> [Mutant] -- ^ Returns the mutants
+genMutantsForGroup config src allowList proven = map (toMutant . apTh (prettyPrint . withAnn)) $ programMutants config ast
+  where origAst = getASTFromStr src
+        (toMut, noMut) = splitAnnotations' origAst allowList proven
+        ast = putDecl origAst toMut
+        withAnn mast = putDecl mast $ getDecl mast ++ noMut
+
+-- | Split declarations of the module to annotated and non annotated.
+splitAnnotations' :: 
+     Module_                  -- ^ Module to be mutated
+  -> [String]                 -- ^ Allow list
+  -> [String]                 -- ^ Proven functions
+  -> ([Decl_], [Decl_])
+splitAnnotations' ast allowList proven = partition fn $ getDecl ast
+  where 
+    fn x = name `elem` allowList && name `notElem` proven
+      where
+        name = functionName x
+
+        -- only one of pragmaName or functionName will be present at a time.
 
 -- | The `genMutantsForSrc` takes the function name to mutate, source where it
 -- is defined, and returns the mutated sources
@@ -260,9 +319,12 @@ allTests modsrc = getAnn (getASTFromStr modsrc) "Test"
 functionName :: Decl_ -> String
 functionName (FunBind _l (Match _ (Ident _li n) _ _ _ : _)) = n
 functionName (FunBind _l (Match _ (Symbol _ls n) _ _ _ : _)) = n
--- we also consider where clauses
 functionName (PatBind _ (PVar _lpv (Ident _li n)) _ _)          = n
+-- Not matching multiple type declarations at once here. Who does that anyway??
+functionName (TypeSig _l [Ident _li n] _) = n
+functionName (TypeSig _l [Symbol _ls n] _) = n
 functionName _                                   = []
+
 
 -- | The identifier of declared pragma
 pragmaName :: Decl_ -> String

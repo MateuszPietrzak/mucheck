@@ -6,10 +6,14 @@ import Data.List (intercalate)
 unsplit :: Char -> [String] -> String
 unsplit c = intercalate [c]
 
+myDropWhile :: Char -> String -> String
+myDropWhile c = dropWhile (/=c)
+{-# ANN myDropWhile "Proven" #-}
+
 split :: Char -> String -> [String]
 split c xs = xs' : if null xs'' then [] else split c (tail xs'')
     where xs' = takeWhile (/=c) xs
-          xs''= dropWhile (/=c) xs
+          xs''= myDropWhile c xs
 
 prop_splitInv xs
     = forAll (elements xs) $ \c ->
