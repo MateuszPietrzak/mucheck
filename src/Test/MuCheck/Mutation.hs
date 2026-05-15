@@ -42,13 +42,20 @@ genMutants' filename = do
     testPairs = getTestPairs ast
     allDeclNames = getAllDeclNames ast
     moduleDep = genModuleDependencyList ast
+    groups = groupTestsByFunctions testPairs
 
   print modul
   print testPairs
   print allDeclNames
   print moduleDep
+  print groups
 
   return ()
+
+-- | Convert the (test, tested function) pairs into groups based
+-- on the tested function.
+groupTestsByFunctions :: [(String, String)] -> Map.Map String [String]
+groupTestsByFunctions = foldl (\acc (t, f) -> Map.insertWith (++) f [t] acc) Map.empty 
 
 -- | Generate a map, that for each function in the module,
 -- finds all direct references to other functions in the module.
