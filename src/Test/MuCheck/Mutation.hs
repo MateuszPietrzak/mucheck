@@ -12,6 +12,7 @@ import Language.Haskell.Exts(Literal(Int, Char, Frac, String, PrimInt, PrimChar,
         ModuleHead(..), ModuleName(..))
 import Data.Generics (Typeable, mkMp, listify)
 import Data.List(nub, (\\), permutations, partition)
+import qualified Data.Map as Map
 
 import Test.MuCheck.Tix
 import Test.MuCheck.MuOp
@@ -39,11 +40,51 @@ genMutants' filename = do
     modul = getModuleName (getASTFromStr f)
     ast  = getASTFromStr f
     testPairs = getTestPairs ast
+    allDeclNames = getAllDeclNames ast
+    moduleDep = genModuleDependencyList ast
 
   print modul
   print testPairs
+  print allDeclNames
+  print moduleDep
 
   return ()
+
+-- | Generate a map, that for each function in the module,
+-- finds all direct references to other functions in the module.
+genModuleCallGraph :: Module_ -> Map.Map String [String]
+genModuleCallGraph m = Map.fromList t
+  where
+    declNames = getAllDeclNames m
+    decls = getAllFunctionDecls m
+    t = map (\x -> (functionName x, findRefs x declNames)) decls
+    findRefs :: Decl_ -> [String] -> [String]
+    findRefs decl allNames = [conv name | name <- listify isNameFromModule decl]
+      where
+        isNameFromModule :: Name_ -> Bool
+        isNameFromModule (Ident _l e) = e `elem` allNames
+        isNameFromModule (Symbol _l e) = e `elem` allNames
+        conv (Symbol _l n) = n
+        conv (Ident _l n) = n
+
+-- | Generate a full dependency for each function in the module,
+-- including indirect ones using DFS.
+genModuleDependencyList :: Module_ -> Map.Map String [String]
+genModuleDependencyList m = Map.fromList t
+  where
+    declNames = getAllDeclNames m
+    graph = genModuleCallGraph m
+    t = map (\x -> (x, dfs' x)) declNames
+    dfs :: Map.Map String Bool -> String -> Map.Map String Bool
+    dfs vis node = foldl (\acc node' -> if acc Map.! node' then acc else dfs acc node') vis' children
+      where
+        vis' = Map.insert node True vis
+        children = graph Map.! node
+
+    emptyVisited = Map.fromList . map (, False) $ declNames
+    dfs' :: String -> [String]
+    dfs' = map fst . filter snd . Map.toList . dfs emptyVisited
+        
 
 -- | Get name of all tests, together with the name of function it tests
 getTestPairs :: Module_ -> [(String, String)]
@@ -90,6 +131,16 @@ removeUncovered uspans mutants = filter isMCovered mutants -- get only covering 
   where  isMCovered :: Mutant -> Bool
          -- | is it contained in any of the spans? if it is, then return false.
          isMCovered Mutant{..} = not $ any (insideSpan _mspan) uspans
+
+-- | Get all top level function declaration names of a module
+getAllDeclNames :: Module_ -> [String]
+getAllDeclNames (Module _ _ _ _ decl) = filter (/= "") . map functionName $ decl
+getAllDeclNames _ = []
+
+-- | Get all top level function declarations of a module
+getAllFunctionDecls :: Module_ -> [Decl_]
+getAllFunctionDecls (Module _ _ _ _ decl) = filter (\x -> functionName x /= "") decl
+getAllFunctionDecls _ = []
 
 -- | Get the module name from ast
 getModuleName :: Module t -> String

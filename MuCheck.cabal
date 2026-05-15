@@ -40,7 +40,8 @@ common dependencies
                     hashable >= 1.2,
                     hpc >= 0.5.1.1,
                     template-haskell >= 2.5.0,
-                    QuickCheck >= 2.18.0
+                    QuickCheck >= 2.18.0,
+                    containers >= 0.6
 
 library
   import:           dependencies
@@ -75,7 +76,6 @@ executable sample-test
   main-is:          Examples/Main.hs
   other-modules:    Examples.AssertCheckTest
                     Examples.QuickCheckTest
-                    Examples.QuickCheckTestImpl
   build-depends:    base >=4 && <5,
                     MuCheck,
                     QuickCheck
