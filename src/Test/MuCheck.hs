@@ -21,6 +21,7 @@ mucheck' moduleFile = do
       putStrLn "==========================="
       putStrLn key
       print analysis
+      -- forM_ mSummmaries (\x -> print x >> putStrLn "")
     ) mutants
 
 -- | Perform mutation analysis using any of the test frameworks that support

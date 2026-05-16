@@ -22,7 +22,13 @@ data MutantSummary = MSumError Mutant String [Summary]         -- ^ Capture the 
                    | MSumAlive Mutant [Summary]                -- ^ The mutant was alive
                    | MSumKilled Mutant [Summary]               -- ^ The mutant was kileld
                    | MSumOther Mutant [Summary]                -- ^ Undetermined - we will treat it as killed as it is not a success.
-                   deriving (Show, Typeable)
+                   deriving (Typeable)
+
+instance Show MutantSummary where
+  show (MSumError mutant err _sum) = "Error:\n" ++ err ++ "\nOf type: " ++ (show . _mtype $ mutant)
+  show (MSumAlive mutant _sum) = "Alive:\n" ++ (_mutant mutant) ++ "\nOf type:" ++ (show . _mtype $ mutant)
+  show (MSumKilled mutant _sum) = "Killed:\n" ++ (show . _mtype $ mutant)
+  show (MSumOther mutant _sum) = "Other:\n" ++ (show . _mtype $ mutant)
 
 evaluateGroup :: (Show b, Summarizable b, TRun a b) =>
      a                                                               -- ^ The module to be evaluated
