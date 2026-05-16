@@ -3,7 +3,7 @@
 module Test.MuCheck.Mutation where
 
 import Language.Haskell.Exts(Literal(Int, Char, Frac, String, PrimInt, PrimChar, PrimFloat, PrimDouble, PrimWord, PrimString),
-        Exp(App, Var, If, Lit, Tuple), QName(UnQual),
+        Exp(App, Var, If, Lit), QName(UnQual),
         Match(Match), Pat(PVar),
         Stmt(Qualifier), Module(Module),
         Name(Ident), Decl(FunBind, PatBind, AnnPragma, TypeSig),
@@ -20,9 +20,7 @@ import Test.MuCheck.Utils.Syb
 import Test.MuCheck.Utils.Common
 import Test.MuCheck.Config
 import Test.MuCheck.TestAdapter
-import Debug.Trace
 import Data.Maybe (listToMaybe)
-import Control.Monad (forM_)
 
 -- | The `genMutants` function is a wrapper to genMutantsWith with standard
 -- configuraton

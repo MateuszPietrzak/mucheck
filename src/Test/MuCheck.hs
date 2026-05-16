@@ -41,11 +41,7 @@ mucheck moduleFile tix = do
   (len, mutants) <- genMutants (getName moduleFile) tix
   -- Should we do random sample on covering alone or on the full?
   smutants <- sampler defaultConfig mutants
-  -- putStrLn "Mutants:"
-  -- forM_ smutants (putStrLn . _mutant)
   tests <- getAllTests (getName moduleFile)
-  -- putStrLn "Tests:"
-  -- forM_ tests putStrLn
   (fsum', msum) <- evaluateMutants moduleFile smutants (map (genTest moduleFile) tests)
   -- set the original size of mutants. (We report the results based on original
   -- number of mutants, not just the covered ones.)
