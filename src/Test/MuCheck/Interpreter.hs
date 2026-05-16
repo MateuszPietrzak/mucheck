@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, RecordWildCards #-}
 -- | The Interpreter module is responible for invoking the Hint interpreter to
 -- evaluate mutants.
-module Test.MuCheck.Interpreter (evaluateMutants, evalMethod, evalMutant, evalTest, summarizeResults, MutantSummary(..)) where
+module Test.MuCheck.Interpreter (evaluateGroup, evaluateMutants, evalMethod, evalMutant, evalTest, summarizeResults, MutantSummary(..)) where
 
 import qualified Language.Haskell.Interpreter as I
 import Control.Monad.Trans (liftIO)
@@ -14,6 +14,7 @@ import Test.MuCheck.TestAdapter
 import Test.MuCheck.Utils.Common
 import Test.MuCheck.Utils.Print
 import Test.MuCheck.AnalysisSummary
+import Test.MuCheck.Mutation (GroupMutants (GroupMutants))
 
 
 -- | Data type to hold results of a single test execution
@@ -22,6 +23,18 @@ data MutantSummary = MSumError Mutant String [Summary]         -- ^ Capture the 
                    | MSumKilled Mutant [Summary]               -- ^ The mutant was kileld
                    | MSumOther Mutant [Summary]                -- ^ Undetermined - we will treat it as killed as it is not a success.
                    deriving (Show, Typeable)
+
+evaluateGroup :: (Show b, Summarizable b, TRun a b) =>
+     a                                                               -- ^ The module to be evaluated
+  -> GroupMutants                                                    -- ^ The mutants to be evaluated
+  -> IO (MAnalysisSummary, [MutantSummary])
+evaluateGroup m (GroupMutants _key tests mutants) = do
+  let
+    tests' = map (genTest m) tests
+  results <- mapM (evalMutant tests') mutants
+  let singleTestSummaries = zipWith (curry (summarizeResults m tests')) mutants results
+      ma  = fullSummary m tests' results
+  return (ma, singleTestSummaries)
 
 -- | Given the list of tests suites to check, run the test suite on mutants.
 evaluateMutants :: (Show b, Summarizable b, TRun a b) =>

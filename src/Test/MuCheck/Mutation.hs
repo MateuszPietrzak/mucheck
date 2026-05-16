@@ -31,43 +31,31 @@ genMutants ::
   -> FilePath           -- ^ Coverage information for the module
   -> IO (Int,[Mutant]) -- ^ Returns the covering mutants produced, and original length.
 genMutants = genMutantsWith defaultConfig
+data GroupMutants = GroupMutants
+  String      -- ^ The tested function (group's key)
+  [TestStr]   -- ^ Test functions of the test group
+  [Mutant]    -- ^ Mutant modules with group's relevant mutations
 
-
-genMutants' ::FilePath -> IO ()
+genMutants' ::FilePath -> IO [GroupMutants]
 genMutants' filename = do
   f <- readFile filename
 
   let
-    modul = getModuleName (getASTFromStr f)
     ast  = getASTFromStr f
     testPairs = getTestPairs ast
-    allDeclNames = getAllDeclNames ast
     moduleDep = genModuleDependencyList ast
     groups = groupTestsByFunctions testPairs
     proven = getProvenFunctions ast
     mutants = genMutantsForAllGroups defaultConfig f moduleDep groups proven
+    res = map snd . Map.toList $ Map.intersectionWithKey GroupMutants groups mutants
 
-  print modul
-  print testPairs
-  print allDeclNames
-  print moduleDep
-  print groups
-  print proven
-
-  forM_ (Map.toList mutants) (\(k, v) -> do
-    putStrLn "========="
-    putStrLn k
-    forM_ v (\m -> do
-      putStrLn . _mutant $ m
-      putStrLn "---"
-      )
-    )
+  return res
 
 
 -- | Convert the (test, tested function) pairs into groups based
 -- on the tested function.
 groupTestsByFunctions :: [(String, String)] -> Map.Map String [String]
-groupTestsByFunctions = foldl (\acc (t, f) -> Map.insertWith (++) f [t] acc) Map.empty 
+groupTestsByFunctions = foldr (\(t, f) acc  -> Map.insertWith (++) f [t] acc) Map.empty 
 
 -- | Generate a map, that for each function in the module,
 -- finds all direct references to other functions in the module.
@@ -95,7 +83,7 @@ genModuleDependencyList m = Map.fromList t
     graph = genModuleCallGraph m
     t = map (\x -> (x, dfs' x)) declNames
     dfs :: Map.Map String Bool -> String -> Map.Map String Bool
-    dfs vis node = foldl (\acc node' -> if acc Map.! node' then acc else dfs acc node') vis' children
+    dfs vis node = foldr (\node' acc -> if acc Map.! node' then acc else dfs acc node') vis' children
       where
         vis' = Map.insert node True vis
         children = graph Map.! node

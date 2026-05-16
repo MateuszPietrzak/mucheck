@@ -5,7 +5,7 @@ module Test.MuCheck where
 import Test.MuCheck.Mutation
 import Test.MuCheck.Config
 import Test.MuCheck.Utils.Common
-import Test.MuCheck.Interpreter (evaluateMutants, MutantSummary(..))
+import Test.MuCheck.Interpreter (evaluateMutants, MutantSummary(..), evaluateGroup)
 import Test.MuCheck.TestAdapter
 import Test.MuCheck.AnalysisSummary
 import Control.Monad
@@ -13,7 +13,15 @@ import Control.Monad
 mucheck' :: (Show b, Summarizable b, TRun a b) =>
      a                                                     -- ^ The module we are mutating
   -> IO ()
-mucheck' moduleFile = genMutants' (getName moduleFile)
+mucheck' moduleFile = do
+  mutants <- genMutants' (getName moduleFile)
+
+  mapM_ (\g@(GroupMutants key _tests _mutants) -> do
+      (analysis, mSummmaries) <- evaluateGroup moduleFile g
+      putStrLn "==========================="
+      putStrLn key
+      print analysis
+    ) mutants
 
 -- | Perform mutation analysis using any of the test frameworks that support
 -- Summarizable (essentially, after running it on haskell, we should be able to
