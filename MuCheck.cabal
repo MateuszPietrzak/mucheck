@@ -77,6 +77,7 @@ executable sample-test
   other-modules:    Examples.AssertCheckTest
                     Examples.QuickCheckTest
                     Examples.LambdaSubstTest
+                    Examples.GeneratedLambdaSubstTest
   build-depends:    base >=4 && <5,
                     MuCheck,
                     QuickCheck

@@ -21,13 +21,13 @@ iDecSorted [] = True
 iDecSorted [x] = True
 iDecSorted (x : (y : xs)) = x <= y && iDecSorted (y : xs)
 
-prop_sortIsSortedLemma :: [Natural] -> Bool
-prop_sortIsSortedLemma xs = isSorted (sort xs) == True
-{-# ANN prop_sortIsSortedLemma "Test sort" #-}
-
 prop_sortLengthLemma :: [Natural] -> Bool
 prop_sortLengthLemma xs = length (sort xs) == length xs
 {-# ANN prop_sortLengthLemma "Test sort" #-}
+
+prop_sortIsSortedLemma :: [Natural] -> Bool
+prop_sortIsSortedLemma xs = isSorted (sort xs) == True
+{-# ANN prop_sortIsSortedLemma "Test sort" #-}
 
 prop_sortSortedLemma :: [Natural] -> Bool
 prop_sortSortedLemma xs = iDecSorted (sort xs)
