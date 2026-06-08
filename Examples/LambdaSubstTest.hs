@@ -25,16 +25,6 @@ sub (Var n)   s = s n
 sub (App t u) s = App (sub t s) (sub u s)
 sub (Lam t)   s = Lam (sub t (liftSub s))
 
-applyBeta :: Tm -> Tm -> Tm
-applyBeta body arg = sub body s
-  where
-    s 0 = arg
-    s k = Var (k - 1)
-
-beta :: Tm -> Tm
-beta (App (Lam body) arg) = applyBeta body arg
-beta t = t
-
 instance Arbitrary Tm where
   arbitrary = sized gen
     where
